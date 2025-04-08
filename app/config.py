@@ -17,7 +17,6 @@ class Settings(BaseModel):
 
 
 def load_config(config_path: str = "settings.json") -> Settings:
-    """Загружает и валидирует конфигурацию"""
     try:
         with open(config_path, "r") as f:
             raw_config = json.load(f)

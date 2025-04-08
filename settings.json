@@ -1,8 +1,8 @@
 {
-  "x": 200,
-  "y": 100,
+  "x": 50,
+  "y": 50,
   "width": 400,
-  "height": 300,
+  "height": 400,
   "min_visible_points": 20,
   "visibility_threshold": 0.5,
   "save_path": "saved_photos"

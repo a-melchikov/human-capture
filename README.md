@@ -1,5 +1,5 @@
 ## Запуск проекта
 
 ```bash
-uvicorn main:app --reload --port 5000
+uv run uvicorn app.main:app --reload --port 5000
 ```
