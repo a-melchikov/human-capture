@@ -1,0 +1,9 @@
+{
+  "x": 200,
+  "y": 100,
+  "width": 400,
+  "height": 300,
+  "min_visible_points": 20,
+  "visibility_threshold": 0.5,
+  "save_path": "saved_photos"
+}
