@@ -1,7 +1,7 @@
 {
   "x": 50,
   "y": 50,
-  "width": 400,
+  "width": 300,
   "height": 400,
   "min_visible_points": 20,
   "visibility_threshold": 0.5,

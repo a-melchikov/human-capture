@@ -5,6 +5,8 @@ import os
 import threading
 
 from app.config import load_config
+from app.dao import DetectionDAO
+from app.database import session_maker
 
 settings = load_config()
 
@@ -14,8 +16,9 @@ class HumanDetector:
         self.cap = None
         self.running = False
         self.thread = None
-        self.photo_saved = False
         self.lock = threading.Lock()
+        self.detection_start_time = None
+        self.last_save_time = 0
 
     def initialize_pose_detection(self):
         mp_pose = mp.solutions.pose
@@ -48,8 +51,11 @@ class HumanDetector:
         return len(visible_points) > min_visible_points
 
     def save_human_photo(self, frame):
+        roi = self.get_roi(frame)
+        if roi is None:
+            return None
         filename = f"{settings.save_path}/human_{int(time.time())}.jpg"
-        cv2.imwrite(filename, frame)
+        cv2.imwrite(filename, roi)
         print(f"Человек обнаружен. Фото сохранено: {filename}")
         return filename
 
@@ -62,7 +68,8 @@ class HumanDetector:
         os.makedirs(settings.save_path, exist_ok=True)
         pose = self.initialize_pose_detection()
         self.cap = cv2.VideoCapture(0)
-        self.photo_saved = False
+        if not self.cap.isOpened():
+            raise RuntimeError("Не удалось подключиться к камере")
 
         while self.running and self.cap.isOpened():
             ret, frame = self.cap.read()
@@ -79,9 +86,32 @@ class HumanDetector:
             if self.is_human_detected(
                 results, settings.min_visible_points, settings.visibility_threshold
             ):
-                if not self.photo_saved:
-                    self.save_human_photo(frame)
-                    self.photo_saved = True
+                current_time = time.time()
+
+                if self.detection_start_time is None:
+                    self.detection_start_time = current_time
+                elif current_time - self.detection_start_time >= 5:
+                    if current_time - self.last_save_time >= 5:
+                        image_path = self.save_human_photo(frame)
+                        with session_maker() as session:
+                            try:
+                                detection_dao = DetectionDAO(session)
+                                detection_dao.add_detection(
+                                    image_path=image_path,
+                                    x=settings.x,
+                                    y=settings.y,
+                                    width=settings.width,
+                                    height=settings.height,
+                                )
+                            except:
+                                session.rollback()
+                                raise
+                            else:
+                                session.commit()
+                        self.last_save_time = current_time
+                        self.detection_start_time = None
+            else:
+                self.detection_start_time = None
 
             # self.draw_roi(frame)
             # cv2.imshow("Human Detection", frame)
@@ -89,7 +119,7 @@ class HumanDetector:
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
 
-        if self.cap:
+        if self.cap.isOpened():
             self.cap.release()
         # cv2.destroyAllWindows()
         self.running = False
