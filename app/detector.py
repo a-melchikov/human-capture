@@ -4,11 +4,9 @@ import time
 import os
 import threading
 
-from app.config import load_config
+from app.config import settings
 from app.dao import DetectionDAO
 from app.database import session_maker
-
-settings = load_config()
 
 
 class HumanDetector:
@@ -19,6 +17,8 @@ class HumanDetector:
         self.lock = threading.Lock()
         self.detection_start_time = None
         self.last_save_time = 0
+        self.event_queue = None
+        self.loop = None
 
     def initialize_pose_detection(self):
         mp_pose = mp.solutions.pose
@@ -108,6 +108,14 @@ class HumanDetector:
                                 raise
                             else:
                                 session.commit()
+                                if self.event_queue and self.loop:
+                                    event_data = {
+                                        "image_path": image_path,
+                                        "timestamp": int(time.time()),
+                                    }
+                                    self.loop.call_soon_threadsafe(
+                                        self.event_queue.put_nowait, event_data
+                                    )
                         self.last_save_time = current_time
                         self.detection_start_time = None
             else:

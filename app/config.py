@@ -28,6 +28,9 @@ def load_config(config_path: str = "settings.json") -> Settings:
         return default_config
 
 
+settings = load_config()
+
+
 if __name__ == "__main__":
     settings = load_config()
     print(settings)

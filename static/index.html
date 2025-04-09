@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Обнаруженные фото</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f9f9f9;
+      }
+
+      h1 {
+        text-align: center;
+        color: #333;
+      }
+
+      #loading {
+        text-align: center;
+        color: #777;
+        font-size: 18px;
+        margin-bottom: 20px;
+      }
+
+      #photos {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+      }
+
+      #photos img {
+        width: 300px;
+        height: auto;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s ease;
+        cursor: pointer;
+      }
+
+      #photos img:hover {
+        transform: scale(1.03);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Обнаруженные фото</h1>
+    <div id="loading">Ожидание новых фото...</div>
+    <div id="photos"></div>
+
+    <script>
+      const photosContainer = document.getElementById("photos");
+      const loadingIndicator = document.getElementById("loading");
+      const shownImages = new Set();
+
+      const eventSource = new EventSource("/events");
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.image_path && !shownImages.has(data.image_path)) {
+            shownImages.add(data.image_path);
+
+            const img = document.createElement("img");
+            img.src = data.image_path;
+            img.alt = "Обнаруженное фото";
+
+            photosContainer.appendChild(img);
+            loadingIndicator.style.display = "none";
+          }
+        } catch (error) {
+          console.error("Ошибка обработки данных события:", error);
+        }
+      };
+
+      eventSource.onerror = (e) => {
+        console.error("Ошибка соединения с EventSource:", e);
+        loadingIndicator.textContent = "Ошибка сервера.";
+      };
+    </script>
+  </body>
+</html>

@@ -5,7 +5,7 @@ from app.models import Detection
 class DetectionDAO:
     def __init__(self, session: Session):
         self.session = session
-    
+
     def add_detection(
         self, image_path: str, x: int, y: int, width: int, height: int
     ) -> Detection:

@@ -8,4 +8,4 @@ wheels/
 
 # Virtual environments
 .venv
-.saved_photos
+saved_photos

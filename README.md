@@ -12,5 +12,5 @@ alembic upgrade head
 
 ## Вопросы
 
-- Как лучше сохранять фото, ссылкой или blob?
+- Как лучше сохранять фото, ссылкой или blob? (sqlalchemy LargeBinary)
 - 
