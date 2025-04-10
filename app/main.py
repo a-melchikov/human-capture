@@ -1,8 +1,11 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from app.lifespan import lifespan
+from app.logging_config import setup_logging
 from app.routers import camera, photos, events, static
 from app.config import settings
+
+setup_logging()
 
 app = FastAPI(
     title="CameraAPI",

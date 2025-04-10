@@ -9,6 +9,7 @@ dependencies = [
     "fastapi>=0.115.12",
     "mediapipe>=0.10.21",
     "opencv-python>=4.11.0.86",
+    "pytz>=2025.2",
     "sqlalchemy>=2.0.40",
     "uvicorn>=0.34.0",
 ]

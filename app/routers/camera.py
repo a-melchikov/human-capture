@@ -2,14 +2,13 @@ from fastapi import APIRouter
 from app.detector import detector
 from app.exceptions import CameraAlreadyRunningException, CameraAlreadyStoppedException
 
-router = APIRouter(prefix="", tags=["Управление камерой"])
+router = APIRouter(tags=["Управление камерой"])
 
 
 @router.post(
     "/start",
     summary="Запуск камеры",
     description="Запускает камеру для определения людей в кадре. Если уже запущена возвращается ошибка",
-    tags=["Управление камерой"],
 )
 def start_camera() -> dict[str, str] | None:
     if detector.running:

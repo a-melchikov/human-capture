@@ -17,7 +17,6 @@ async def event_generator():
     summary="Server-Sent Events",
     description="Позволяет получать события о новых добавленных фотографиях через SSE (Server-Sent Events)",
     response_class=StreamingResponse,
-    tags=["SSE"],
 )
 async def events() -> StreamingResponse:
     return StreamingResponse(event_generator(), media_type="text/event-stream")
