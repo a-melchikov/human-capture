@@ -1,38 +1,85 @@
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 import asyncio
 import json
+
 from app.dao import DetectionDAO
 from app.detector import detector
 from app.config import settings
+from app.exceptions import (
+    CameraAlreadyRunningException,
+    CameraAlreadyStoppedException,
+    InvalidDateRangeException,
+)
 from app.schemas import DetectionOut
 from app.database import session_maker
 
-app = FastAPI()
+
+class State:
+    def __init__(self):
+        self.event_queue = asyncio.Queue()
+        self.detector_loop = asyncio.get_event_loop()
+
+
+app_state = State()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    detector.event_queue = app_state.event_queue
+    detector.loop = app_state.detector_loop
+    yield
+
+
+app = FastAPI(
+    title="CameraAPI",
+    description="Приложение для работы с камерой для обнаружения людей.",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    lifespan=lifespan,
+)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/saved_photos", StaticFiles(directory=settings.save_path), name="photos")
 
 
-@app.get("/")
-async def read_index():
+@app.get(
+    "/",
+    summary="Главная страница",
+    description="Возвращает основную страницу приложения",
+    response_class=FileResponse,
+    tags=["Главная"],
+)
+async def read_index() -> FileResponse:
     return FileResponse("static/index.html")
 
 
-@app.post("/start")
-def start_camera():
+@app.post(
+    "/start",
+    summary="Запуск камеры",
+    description="Запускает камеру для определения людей в кадре. Если уже запущена возвращается ошибка",
+    tags=["Управление камерой"],
+)
+def start_camera() -> dict[str, str] | None:
     if detector.running:
-        return {"status": "Камера уже запущена"}
+        raise CameraAlreadyRunningException
     detector.start()
     return {"status": "Камера запущена"}
 
 
-@app.post("/stop")
-def stop_camera():
+@app.post(
+    "/stop",
+    summary="Остановка камеры",
+    description="Останавливает камеру. Если уже остановлена возвращается ошибка",
+    tags=["Управление камерой"],
+)
+def stop_camera() -> dict[str, str] | None:
     if not detector.running:
-        return {"status": "Камера уже остановлена"}
+        raise CameraAlreadyStoppedException
     detector.stop()
     return {"status": "Камера остановлена"}
 
@@ -41,23 +88,23 @@ def stop_camera():
     "/humans",
     response_model=list[DetectionOut],
     summary="Получить фотографии людей за определённый период",
+    description="Возвращает список фотографий людей, найденных в определённом временном промежутке",
+    tags=["Фотографии людей"],
 )
 def get_detections_by_date(
     start: datetime = Query(
         default_factory=lambda: datetime.now() - timedelta(hours=1),
-        description="Начало временного диапазона (по умолчанию: 1 час назад)",
+        description="Начало временного диапазона. По умолчанию: 1 час назад",
         example="2025-04-09T10:00:00",
     ),
     end: datetime = Query(
         default_factory=datetime.now,
-        description="Конец временного диапазона (по умолчанию: текущее время)",
+        description="Конец временного диапазона. По умолчанию: текущее время",
         example="2025-04-09T15:00:00",
     ),
-):
+) -> list[DetectionOut] | None:
     if start > end:
-        raise HTTPException(
-            status_code=400, detail="Ошибка: параметр 'start' не может быть позже 'end'"
-        )
+        raise InvalidDateRangeException
 
     with session_maker() as session:
         dao = DetectionDAO(session)
@@ -67,7 +114,7 @@ def get_detections_by_date(
             DetectionOut(
                 id=d.id,
                 timestamp=d.timestamp,
-                image_url=f"localhost:5000/saved_photos/{d.image_path.split('/')[-1]}",
+                image_url=f"http://localhost:5000/saved_photos/{d.image_path.split('/')[-1]}",
             )
             for d in detections
         ]
@@ -75,21 +122,16 @@ def get_detections_by_date(
 
 async def event_generator():
     while True:
-        event_data = await event_queue.get()
+        event_data = await app_state.event_queue.get()
         yield f"data: {json.dumps(event_data)}\n\n"
 
 
-@app.get("/events")
-async def events():
+@app.get(
+    "/events",
+    summary="Server-Sent Events",
+    description="Позволяет получать события о новых добавленных фотографиях через SSE (Server-Sent Events)",
+    response_class=StreamingResponse,
+    tags=["SSE"],
+)
+async def events() -> StreamingResponse:
     return StreamingResponse(event_generator(), media_type="text/event-stream")
-
-
-event_queue = None
-
-
-@app.on_event("startup")
-async def startup_event():
-    global event_queue
-    event_queue = asyncio.Queue()
-    detector.event_queue = event_queue
-    detector.loop = asyncio.get_event_loop()

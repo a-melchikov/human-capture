@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, HttpUrl
 from datetime import datetime
 
 
@@ -10,4 +10,4 @@ class DetectionOut(BaseModel):
 
     id: int
     timestamp: datetime
-    image_url: str
+    image_url: HttpUrl
