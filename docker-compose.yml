@@ -1,0 +1,12 @@
+version: "3.8"
+services:
+  fastapi-app:
+    build: .
+    devices:
+      - "/dev/video0:/dev/video0"  # Проброс устройства камеры
+    ports:
+      - "5000:5000"
+    environment:
+      - ENV=production
+    volumes:
+      - .:/app
