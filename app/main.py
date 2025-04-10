@@ -1,10 +1,14 @@
-from fastapi import FastAPI
+from datetime import datetime, timedelta
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 import asyncio
 import json
+from app.dao import DetectionDAO
 from app.detector import detector
 from app.config import settings
+from app.schemas import DetectionOut
+from app.database import session_maker
 
 app = FastAPI()
 
@@ -31,6 +35,42 @@ def stop_camera():
         return {"status": "Камера уже остановлена"}
     detector.stop()
     return {"status": "Камера остановлена"}
+
+
+@app.get(
+    "/humans",
+    response_model=list[DetectionOut],
+    summary="Получить фотографии людей за определённый период",
+)
+def get_detections_by_date(
+    start: datetime = Query(
+        default_factory=lambda: datetime.now() - timedelta(hours=1),
+        description="Начало временного диапазона (по умолчанию: 1 час назад)",
+        example="2025-04-09T10:00:00",
+    ),
+    end: datetime = Query(
+        default_factory=datetime.now,
+        description="Конец временного диапазона (по умолчанию: текущее время)",
+        example="2025-04-09T15:00:00",
+    ),
+):
+    if start > end:
+        raise HTTPException(
+            status_code=400, detail="Ошибка: параметр 'start' не может быть позже 'end'"
+        )
+
+    with session_maker() as session:
+        dao = DetectionDAO(session)
+        detections = dao.get_detections_by_date(start, end)
+
+        return [
+            DetectionOut(
+                id=d.id,
+                timestamp=d.timestamp,
+                image_url=f"localhost:5000/saved_photos/{d.image_path.split('/')[-1]}",
+            )
+            for d in detections
+        ]
 
 
 async def event_generator():

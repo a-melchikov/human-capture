@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy.orm import Session
 from app.models import Detection
 
@@ -32,3 +33,11 @@ class DetectionDAO:
             self.session.commit()
             return True
         return False
+
+    def get_detections_by_date(self, start: datetime, end: datetime) -> list[Detection]:
+        return (
+            self.session.query(Detection)
+            .filter(Detection.timestamp >= start, Detection.timestamp <= end)
+            .order_by(Detection.timestamp.desc())
+            .all()
+        )
