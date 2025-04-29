@@ -205,5 +205,5 @@ class HumanDetector:
 
 detector = HumanDetector(
     settings=settings,
-    show_camera=False,
+    show_camera=settings.show_camera,
 )

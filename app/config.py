@@ -15,6 +15,9 @@ class Settings(BaseModel):
         0.5, gt=0, le=1, description="Порог видимости точек"
     )
     save_path: str = Field("saved_photos", description="Путь для сохранения фото")
+    show_camera: bool = Field(
+        False, description="Включение/выключение 'debug' окна opencv камеры"
+    )
 
 
 def load_config(config_path: str = "settings.json") -> Settings:
