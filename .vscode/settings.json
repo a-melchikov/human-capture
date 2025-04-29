@@ -1,0 +1,69 @@
+{
+  // Общие настройки VS Code
+  "git.autoRepositoryDetection": "subFolders",
+  "breadcrumbs.enabled": true,
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit",
+    "source.fixAll": "explicit"
+  },
+
+  // Настройки Python
+  "python.languageServer": "Pylance",
+  "python.analysis.typeCheckingMode": "strict",
+  "python.analysis.diagnosticMode": "workspace",
+  "python.analysis.autoSearchPaths": true,
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.completeFunctionParens": true,
+  "python.analysis.inlayHints.variableTypes": true,
+  "python.analysis.inlayHints.functionReturnTypes": true,
+  "python.analysis.importFormat": "absolute",
+  "python.analysis.enablePytestSupport": true,
+  "python.analysis.indexing": true,
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportUnusedImport": "warning",
+    "reportUnusedVariable": "warning",
+    "reportUnusedFunction": "warning",
+    "reportMissingTypeStubs": "none"
+  },
+
+  // Улучшенная поддержка используемых библиотек
+  "python.analysis.packageIndexDepths": [
+    {
+      "name": "fastapi",
+      "depth": 3,
+      "includeAllSymbols": true
+    },
+    {
+      "name": "pydantic",
+      "depth": 3,
+      "includeAllSymbols": true
+    },
+    {
+      "name": "sqlalchemy",
+      "depth": 3,
+      "includeAllSymbols": true
+    },
+    {
+      "name": "alembic",
+      "depth": 2,
+      "includeAllSymbols": true
+    },
+    {
+      "name": "asyncpg",
+      "depth": 2,
+      "includeAllSymbols": true
+    }
+  ],
+
+  // Форматирование кода
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit",
+      "source.fixAll.ruff": "explicit"
+    }
+  }
+}

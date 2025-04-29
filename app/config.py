@@ -1,4 +1,5 @@
 import json
+
 from pydantic import BaseModel, Field
 
 
@@ -18,7 +19,7 @@ class Settings(BaseModel):
 
 def load_config(config_path: str = "settings.json") -> Settings:
     try:
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             raw_config = json.load(f)
             return Settings.model_validate(raw_config)
     except FileNotFoundError:

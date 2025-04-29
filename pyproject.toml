@@ -13,3 +13,35 @@ dependencies = [
     "sqlalchemy>=2.0.40",
     "uvicorn>=0.34.0",
 ]
+
+[tool.ruff]
+line-length = 88         # Максимальная длина строки  
+target-version = "py310" # Твой Python  
+fix = true               # Автоисправления  
+
+[tool.ruff.lint]
+select = [
+    "E",    # Ошибки PEP8  
+    "W",    # Предупреждения PEP8  
+    "F",    # Ошибки Pyflakes (неиспользуемые импорты, переменные)  
+    "I",    # Сортировка импортов (isort)  
+    "N",    # Стиль именования (PEP8)  
+    "UP",   # Обновление до нового синтаксиса Python  
+    "B",    # flake8-bugbear (ловит потенциальные баги)  
+    "A",    # flake8-builtins (избегаем теневых имен)  
+    "C4",   # flake8-comprehensions (оптимизация list/set comprehensions)  
+    "S",    # flake8-bandit (проверка безопасности кода)  
+    "PERF", # flake8-perf (проверка на медленные конструкции)  
+    "PL",   # pylint (дополнительные проверки)  
+]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double" # Двойные кавычки  
+indent-style = "space" # Пробелы вместо табов
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "ruff>=0.11.7",
+]

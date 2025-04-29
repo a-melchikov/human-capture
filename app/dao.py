@@ -1,5 +1,7 @@
 from datetime import datetime
+
 from sqlalchemy.orm import Session
+
 from app.models import Detection
 
 
@@ -21,7 +23,7 @@ class DetectionDAO:
     def get_all_detections(self) -> list[Detection]:
         return self.session.query(Detection).all()
 
-    def get_detection_by_id(self, detection_id: int) -> Detection:
+    def get_detection_by_id(self, detection_id: int) -> Detection | None:
         return (
             self.session.query(Detection).filter(Detection.id == detection_id).first()
         )

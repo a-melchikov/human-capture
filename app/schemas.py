@@ -1,5 +1,6 @@
-from pydantic import BaseModel, ConfigDict, HttpUrl
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, HttpUrl
 
 
 class DetectionOut(BaseModel):

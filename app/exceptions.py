@@ -1,6 +1,5 @@
 from fastapi import HTTPException, status
 
-
 CameraAlreadyRunningException = HTTPException(
     status_code=status.HTTP_400_BAD_REQUEST,
     detail="Ошибка: Камера уже запущена",
