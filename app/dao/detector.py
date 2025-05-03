@@ -4,7 +4,7 @@ from sqlalchemy import select
 
 from app.dao.base import BaseDAO
 from app.db.core import async_session_maker
-from app.models import Detection
+from app.models.detector import Detection
 
 
 class DetectionDAO(BaseDAO[Detection]):

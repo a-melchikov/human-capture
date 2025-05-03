@@ -7,7 +7,7 @@ import time
 import cv2
 import mediapipe as mp
 
-from app.config import Settings, settings
+from app.core.config import Settings, settings
 from app.dao.detector import DetectionDAO
 
 logger = logging.getLogger(__name__)

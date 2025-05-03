@@ -5,7 +5,7 @@ from fastapi import APIRouter, Query
 
 from app.dao.detector import DetectionDAO
 from app.exceptions import InvalidDateRangeException
-from app.schemas import DetectionOut
+from app.schemas.detector import DetectionOut
 
 router = APIRouter(tags=["Фотографии людей"])
 

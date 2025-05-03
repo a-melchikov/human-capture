@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from app.detector import detector
+from app.services.detector import detector
 
 
 class State:

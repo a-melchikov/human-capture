@@ -3,7 +3,7 @@ import json
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from app.lifespan import app_state
+from app.core.lifespan import app_state
 
 router = APIRouter(tags=["SSE"])
 
