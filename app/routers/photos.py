@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Query
 from datetime import datetime, timedelta
 
 import pytz
-from app.database import session_maker
+from fastapi import APIRouter, Query
+
 from app.dao import DetectionDAO
-from app.schemas import DetectionOut
+from app.database import session_maker
 from app.exceptions import InvalidDateRangeException
+from app.schemas import DetectionOut
 
 router = APIRouter(tags=["Фотографии людей"])
 
@@ -38,6 +39,27 @@ def get_detections_by_date(
     with session_maker() as session:
         dao = DetectionDAO(session)
         detections = dao.get_detections_by_date(start, end)
+
+        return [
+            DetectionOut(
+                id=d.id,
+                timestamp=d.timestamp,
+                image_url=f"http://localhost:5000/saved_photos/{d.image_path.split('/')[-1]}",
+            )
+            for d in detections
+        ]
+
+
+@router.get(
+    "/humans/all",
+    response_model=list[DetectionOut],
+    summary="Получить все фотографии",
+    description="Возвращает список всех фотографий людей",
+)
+def get_all_detections() -> list[DetectionOut]:
+    with session_maker() as session:
+        dao = DetectionDAO(session)
+        detections = dao.get_all_detections()
 
         return [
             DetectionOut(

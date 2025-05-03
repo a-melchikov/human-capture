@@ -6,5 +6,5 @@
   "min_visible_points": 20,
   "visibility_threshold": 0.5,
   "save_path": "saved_photos",
-  "show_camera": "True"
+  "show_camera": true
 }

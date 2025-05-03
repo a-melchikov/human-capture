@@ -53,6 +53,53 @@
       const loadingIndicator = document.getElementById("loading");
       const shownImages = new Set();
 
+      function renderPhoto(imageUrl, timestamp) {
+        const container = document.createElement("div");
+        container.style.display = "flex";
+        container.style.flexDirection = "column";
+        container.style.alignItems = "center";
+        container.style.marginBottom = "10px";
+
+        const img = document.createElement("img");
+        img.src = imageUrl;
+        img.alt = "Обнаруженное фото";
+
+        const formattedTime = new Date(timestamp).toLocaleString("ru-RU", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+
+        const caption = document.createElement("div");
+        caption.textContent = formattedTime;
+        caption.style.color = "#555";
+        caption.style.marginTop = "5px";
+        caption.style.fontSize = "14px";
+
+        container.appendChild(img);
+        container.appendChild(caption);
+        photosContainer.appendChild(container);
+      }
+
+      fetch("/humans/all")
+        .then((response) => response.json())
+        .then((data) => {
+          data.forEach((photo) => {
+            if (!shownImages.has(photo.image_url)) {
+              shownImages.add(photo.image_url);
+              renderPhoto(photo.image_url, photo.timestamp);
+            }
+          });
+          loadingIndicator.style.display = "none";
+        })
+        .catch((error) => {
+          console.error("Ошибка загрузки всех фото:", error);
+          loadingIndicator.textContent = "Ошибка загрузки фото.";
+        });
+
       const eventSource = new EventSource("/events");
 
       eventSource.onmessage = (event) => {
@@ -61,39 +108,10 @@
 
           if (data.image_path && !shownImages.has(data.image_path)) {
             shownImages.add(data.image_path);
-
-            const container = document.createElement("div");
-            container.style.display = "flex";
-            container.style.flexDirection = "column";
-            container.style.alignItems = "center";
-            container.style.marginBottom = "10px";
-
-            const img = document.createElement("img");
-            img.src = data.image_path;
-            img.alt = "Обнаруженное фото";
-
             const timestamp = data.timestamp
               ? new Date(data.timestamp * 1000)
               : new Date();
-            const formattedTime = timestamp.toLocaleString("ru-RU", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            });
-
-            const caption = document.createElement("div");
-            caption.textContent = formattedTime;
-            caption.style.color = "#555";
-            caption.style.marginTop = "5px";
-            caption.style.fontSize = "14px";
-
-            container.appendChild(img);
-            container.appendChild(caption);
-            photosContainer.appendChild(container);
-
+            renderPhoto(data.image_path, timestamp);
             loadingIndicator.style.display = "none";
           }
         } catch (error) {
