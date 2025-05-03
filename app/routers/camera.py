@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+
 from app.detector import detector
 from app.exceptions import CameraAlreadyRunningException, CameraAlreadyStoppedException
 

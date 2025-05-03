@@ -3,8 +3,7 @@ from datetime import datetime, timedelta
 import pytz
 from fastapi import APIRouter, Query
 
-from app.dao import DetectionDAO
-from app.database import session_maker
+from app.dao.detector import DetectionDAO
 from app.exceptions import InvalidDateRangeException
 from app.schemas import DetectionOut
 
@@ -17,15 +16,15 @@ router = APIRouter(tags=["Фотографии людей"])
     summary="Получить фотографии людей за определённый период",
     description="Возвращает список фотографий людей, найденных в определённом временном промежутке",
 )
-def get_detections_by_date(
-    start: datetime = Query(
+async def get_detections_by_date(
+    start: datetime = Query(  # noqa: B008
         default_factory=lambda: (
             datetime.now(pytz.timezone("Europe/Samara")) - timedelta(hours=1)
         ).replace(microsecond=0),
         description="Начало временного диапазона. По умолчанию: 1 час назад",
         example="2025-04-09T10:00:00",
     ),
-    end: datetime = Query(
+    end: datetime = Query(  # noqa: B008
         default_factory=lambda: datetime.now(pytz.timezone("Europe/Samara")).replace(
             microsecond=0
         ),
@@ -36,18 +35,16 @@ def get_detections_by_date(
     if start > end:
         raise InvalidDateRangeException
 
-    with session_maker() as session:
-        dao = DetectionDAO(session)
-        detections = dao.get_detections_by_date(start, end)
+    detections = await DetectionDAO.get_detections_by_date(start, end)
 
-        return [
-            DetectionOut(
-                id=d.id,
-                timestamp=d.timestamp,
-                image_url=f"http://localhost:5000/saved_photos/{d.image_path.split('/')[-1]}",
-            )
-            for d in detections
-        ]
+    return [
+        DetectionOut(
+            id=d.id,
+            timestamp=d.timestamp,
+            image_url=f"http://localhost:5000/saved_photos/{d.image_path.split('/')[-1]}",
+        )
+        for d in detections
+    ]
 
 
 @router.get(
@@ -56,16 +53,14 @@ def get_detections_by_date(
     summary="Получить все фотографии",
     description="Возвращает список всех фотографий людей",
 )
-def get_all_detections() -> list[DetectionOut]:
-    with session_maker() as session:
-        dao = DetectionDAO(session)
-        detections = dao.get_all_detections()
+async def get_all_detections() -> list[DetectionOut]:
+    detections = await DetectionDAO.find_all()
 
-        return [
-            DetectionOut(
-                id=d.id,
-                timestamp=d.timestamp,
-                image_url=f"http://localhost:5000/saved_photos/{d.image_path.split('/')[-1]}",
-            )
-            for d in detections
-        ]
+    return [
+        DetectionOut(
+            id=d.id,
+            timestamp=d.timestamp,
+            image_url=f"http://localhost:5000/saved_photos/{d.image_path.split('/')[-1]}",
+        )
+        for d in detections
+    ]

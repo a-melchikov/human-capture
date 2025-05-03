@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import threading
@@ -6,9 +7,8 @@ import time
 import cv2
 import mediapipe as mp
 
-from app.config import settings
-from app.dao import DetectionDAO
-from app.database import session_maker
+from app.config import Settings, settings
+from app.dao.detector import DetectionDAO
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +36,9 @@ class PoseDetector:
 
 
 class FrameProcessor:
-    def __init__(self, settings):
-        self.settings = settings
+
+    def __init__(self, settings: Settings):
+        self.settings: Settings = settings
 
     def get_roi(self, frame: cv2.Mat) -> cv2.Mat | None:
         height, width = frame.shape[:2]
@@ -95,23 +96,14 @@ class DetectionSaver:
         logger.info("Человек обнаружен. Фото сохранено: %s", path)
         return path
 
-    def save_to_database(self, image_path):
-        with session_maker() as session:
-            try:
-                detection_dao = DetectionDAO(session)
-                detection_dao.add_detection(
-                    image_path=image_path,
-                    x=self.settings.x,
-                    y=self.settings.y,
-                    width=self.settings.width,
-                    height=self.settings.height,
-                )
-            except Exception as e:
-                session.rollback()
-                logger.error("Ошибка при сохранении в базу данных: %s", e)
-                raise
-            else:
-                session.commit()
+    async def save_to_database(self, image_path: str):
+        await DetectionDAO.add(
+            image_path=image_path,
+            x=self.settings.x,
+            y=self.settings.y,
+            width=self.settings.width,
+            height=self.settings.height,
+        )
 
 
 class HumanDetector:
@@ -155,7 +147,12 @@ class HumanDetector:
                 elif current_time - self.detection_start_time >= 5:
                     if current_time - self.last_save_time >= 5:
                         image_path = self.detection_saver.save_human_image(frame)
-                        self.detection_saver.save_to_database(image_path)
+
+                        if image_path:
+                            asyncio.run_coroutine_threadsafe(
+                                self.detection_saver.save_to_database(image_path),
+                                self.loop,
+                            )
 
                         if self.event_queue and self.loop:
                             event_data = {

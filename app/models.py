@@ -4,12 +4,10 @@ import pytz
 from sqlalchemy import TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.database import Base
+from app.db.base import Base
 
 
 class Detection(Base):
-    __tablename__ = "detections"
-
     id: Mapped[int] = mapped_column(primary_key=True)
     timestamp: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
