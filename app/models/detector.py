@@ -4,7 +4,7 @@ import pytz
 from sqlalchemy import TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base
+from app.database.base import Base
 
 
 class Detection(Base):

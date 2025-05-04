@@ -2,12 +2,12 @@ from datetime import datetime
 
 from sqlalchemy import select
 
-from app.dao.base import BaseDAO
-from app.db.core import async_session_maker
+from app.database.core import async_session_maker
 from app.models.detector import Detection
+from app.repositories.sqlalchemy_repository import SQLAlchemyRepository
 
 
-class DetectionDAO(BaseDAO[Detection]):
+class DetectionDAO(SQLAlchemyRepository[Detection]):
     model = Detection
 
     @classmethod

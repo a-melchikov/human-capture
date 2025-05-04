@@ -1,18 +1,19 @@
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 from sqlalchemy import delete as sqlalchemy_delete
 from sqlalchemy import select
 from sqlalchemy import update as sqlalchemy_update
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.db.base import Base
-from app.db.core import async_session_maker
+from app.database.base import Base
+from app.database.core import async_session_maker
+from app.repositories.base import BaseRepository
 
 T = TypeVar("T", bound=Base)
 
 
-class BaseDAO(Generic[T]):
-    """Базовый DAO-класс для работы с моделями SQLAlchemy."""
+class SQLAlchemyRepository(BaseRepository[T]):
+    """Базовый репозиторий для работы с моделями SQLAlchemy."""
 
     model: type[T]
 

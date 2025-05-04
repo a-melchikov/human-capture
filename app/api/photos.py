@@ -3,8 +3,8 @@ from datetime import datetime, timedelta
 import pytz
 from fastapi import APIRouter, Query
 
-from app.dao.detector import DetectionDAO
 from app.exceptions import InvalidDateRangeException
+from app.repositories.detector import DetectionDAO
 from app.schemas.detector import DetectionOut
 
 router = APIRouter(tags=["Фотографии людей"])
@@ -41,7 +41,7 @@ async def get_detections_by_date(
         DetectionOut(
             id=d.id,
             timestamp=d.timestamp,
-            image_url=f"http://localhost:5000/saved_photos/{d.image_path.split('/')[-1]}",
+            image_url=f"http://localhost:5000/saved_photos/{d.image_path.split('/')[-1]}", # type: ignore
         )
         for d in detections
     ]
@@ -60,7 +60,7 @@ async def get_all_detections() -> list[DetectionOut]:
         DetectionOut(
             id=d.id,
             timestamp=d.timestamp,
-            image_url=f"http://localhost:5000/saved_photos/{d.image_path.split('/')[-1]}",
+            image_url=f"http://localhost:5000/saved_photos/{d.image_path.split('/')[-1]}", # type: ignore
         )
         for d in detections
     ]

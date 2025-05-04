@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.core.lifespan import lifespan
 from app.core.logging_config import setup_logging
-from app.routers import camera, events, photos, static
+from app.api import camera, events, photos, static
 
 setup_logging()
 
