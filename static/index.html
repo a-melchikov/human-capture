@@ -53,7 +53,22 @@
       const loadingIndicator = document.getElementById("loading");
       const shownImages = new Set();
 
-      function renderPhoto(imageUrl, timestamp) {
+      async function checkImageExists(url) {
+        try {
+          const response = await fetch(url, { method: "HEAD" });
+          return response.ok;
+        } catch (error) {
+          return false;
+        }
+      }
+
+      async function renderPhoto(imageUrl, timestamp) {
+        const imageExists = await checkImageExists(imageUrl);
+        if (!imageExists) {
+          console.warn(`Фото не найдено: ${imageUrl}`);
+          return;
+        }
+
         const container = document.createElement("div");
         container.style.display = "flex";
         container.style.flexDirection = "column";
@@ -63,6 +78,11 @@
         const img = document.createElement("img");
         img.src = imageUrl;
         img.alt = "Обнаруженное фото";
+
+        img.onerror = () => {
+          container.remove();
+          shownImages.delete(imageUrl);
+        };
 
         const formattedTime = new Date(timestamp).toLocaleString("ru-RU", {
           day: "2-digit",
@@ -84,25 +104,30 @@
         photosContainer.appendChild(container);
       }
 
-      fetch("/humans/all")
-        .then((response) => response.json())
-        .then((data) => {
-          data.forEach((photo) => {
+      async function loadInitialPhotos() {
+        try {
+          const response = await fetch("/humans/all");
+          const data = await response.json();
+
+          for (const photo of data) {
             if (!shownImages.has(photo.image_url)) {
               shownImages.add(photo.image_url);
-              renderPhoto(photo.image_url, photo.timestamp);
+              await renderPhoto(photo.image_url, photo.timestamp);
             }
-          });
+          }
+
           loadingIndicator.style.display = "none";
-        })
-        .catch((error) => {
+        } catch (error) {
           console.error("Ошибка загрузки всех фото:", error);
           loadingIndicator.textContent = "Ошибка загрузки фото.";
-        });
+        }
+      }
+
+      loadInitialPhotos();
 
       const eventSource = new EventSource("/events");
 
-      eventSource.onmessage = (event) => {
+      eventSource.onmessage = async (event) => {
         try {
           const data = JSON.parse(event.data);
 
@@ -111,7 +136,7 @@
             const timestamp = data.timestamp
               ? new Date(data.timestamp * 1000)
               : new Date();
-            renderPhoto(data.image_path, timestamp);
+            await renderPhoto(data.image_path, timestamp);
             loadingIndicator.style.display = "none";
           }
         } catch (error) {
