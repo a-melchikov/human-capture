@@ -118,6 +118,7 @@ class HumanDetector:
         self.frame_processor = FrameProcessor(settings)
         self.detection_saver = DetectionSaver(settings)
 
+        self.window_name = "Human Detection"
         self.cap = None
         self.running = False
         self.thread = None
@@ -129,85 +130,108 @@ class HumanDetector:
         self.show_camera = show_camera
 
     def _run(self) -> None:
-        self.cap = cv2.VideoCapture(0)
-        if not self.cap.isOpened():
-            raise RuntimeError("Не удалось подключиться к камере")
+        try:
+            self.cap = cv2.VideoCapture(0)
+            if not self.cap.isOpened():
+                logger.error("Не удалось подключиться к камере")
+                self.running = False
+                return
 
-        while self.running and self.cap.isOpened():
-            ret, frame = self.cap.read()
-            if not ret:
-                break
+            while self.running and self.cap.isOpened():
+                ret, frame = self.cap.read()
+                if not ret:
+                    logger.error("Ошибка чтения кадра")
+                    continue
 
-            roi = self.frame_processor.get_roi(frame)
-            if roi is None:
-                logger.error("Ошибка, ROI выходит за границы")
-                break
-
-            results = self.face_detector.process(roi)
-
-            if self.face_detector.is_human_detected(results):
-                current_time = time.time()
-
-                if self.detection_start_time is None:
-                    self.detection_start_time = current_time
-                elif current_time - self.detection_start_time >= 5:
-                    if current_time - self.last_save_time >= 5:
-                        image_path: str | None = self.detection_saver.save_human_image(
-                            frame
-                        )
-
-                        if image_path:
-                            asyncio.run_coroutine_threadsafe(
-                                self.detection_saver.save_to_database(image_path),
-                                self.loop,
-                            )
-
-                        if self.event_queue and self.loop:
-                            event_data: dict[str, str | int] = {
-                                "image_path": image_path,
-                                "timestamp": int(time.time()),
-                            }
-                            self.loop.call_soon_threadsafe(
-                                self.event_queue.put_nowait, event_data
-                            )
-
-                        self.last_save_time = current_time
-                        self.detection_start_time = None
-            else:
-                self.detection_start_time = None
-
-            if self.show_camera:
-                self.frame_processor.draw_roi(frame)
-                cv2.imshow("Human Detection", frame)
-
-                if cv2.waitKey(1) & 0xFF == ord("q"):
+                roi = self.frame_processor.get_roi(frame)
+                if roi is None:
+                    logger.error("ROI выходит за границы кадра")
                     break
 
-        if self.cap.isOpened():
-            self.cap.release()
-            self.cap = None
+                results = self.face_detector.process(roi)
 
-        if self.show_camera:
-            cv2.destroyAllWindows()
-            cv2.waitKey(100)
+                if self.face_detector.is_human_detected(results):
+                    current_time = time.time()
 
-        self.running = False
+                    if self.detection_start_time is None:
+                        self.detection_start_time = current_time
+                    elif current_time - self.detection_start_time >= 5:
+                        if current_time - self.last_save_time >= 5:
+                            image_path = self.detection_saver.save_human_image(frame)
+                            if image_path:
+                                asyncio.run_coroutine_threadsafe(
+                                    self.detection_saver.save_to_database(image_path),
+                                    self.loop,
+                                )
+
+                                if self.event_queue and self.loop:
+                                    event_data = {
+                                        "image_path": image_path,
+                                        "timestamp": int(time.time()),
+                                    }
+                                    self.loop.call_soon_threadsafe(
+                                        self.event_queue.put_nowait, event_data
+                                    )
+                            self.last_save_time = current_time
+                            self.detection_start_time = None
+                else:
+                    self.detection_start_time = None
+
+                if self.show_camera:
+                    self.frame_processor.draw_roi(frame)
+                    cv2.imshow(self.window_name, frame)
+                    if cv2.waitKey(1) & 0xFF == ord("q"):
+                        self.running = False
+
+        except Exception as e:
+            logger.error("Ошибка в потоке детектора: %s", repr(e))
+        finally:
+            with self.lock:
+                if self.cap and self.cap.isOpened():
+                    self.cap.release()
+                self.cap = None
+                if self.show_camera:
+                    cv2.destroyWindow(self.window_name)
+                    cv2.waitKey(1)
+                self.running = False
+            logger.info("Камера и окна закрыты")
 
     def start(self):
         with self.lock:
             if not self.running:
+                for _ in range(5):
+                    if not self._check_camera_in_use():
+                        break
+                    time.sleep(0.5)
+                else:
+                    logger.error("Камера занята, невозможно запустить")
+                    return
+
                 self.running = True
                 self.thread = threading.Thread(target=self._run)
                 self.thread.start()
-                logger.info("Камера запущена.")
+                logger.info("Камера успешно запущена")
 
     def stop(self):
         with self.lock:
             if self.running:
                 self.running = False
                 if self.thread and self.thread.is_alive():
-                    self.thread.join()
-                logger.info("Камера остановлена.")
+                    self.thread.join(timeout=1.0)
+                    if self.thread.is_alive():
+                        logger.warning("Поток завис, принудительное завершение")
+                        if self.cap and self.cap.isOpened():
+                            self.cap.release()
+                        self.cap = None
+                self.thread = None
+                logger.info("Камера остановлена")
+
+    def _check_camera_in_use(self):
+        test_cap = cv2.VideoCapture(0)
+        if test_cap.isOpened():
+            test_cap.release()
+            return False
+        return True
 
 
 detector = HumanDetector(
