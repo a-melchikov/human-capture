@@ -3,9 +3,10 @@ import logging
 import os
 import threading
 import time
+from typing import Any, NamedTuple
 
 import cv2
-import mediapipe as mp
+from mediapipe.python.solutions.face_detection import FaceDetection
 
 from app.core.config import Settings, settings
 from app.dao.detector import DetectionDAO
@@ -13,34 +14,26 @@ from app.dao.detector import DetectionDAO
 logger = logging.getLogger(__name__)
 
 
-class PoseDetector:
+class FaceDetector:
     def __init__(self):
-        self.pose = mp.solutions.pose.Pose()
-        self.min_visible_points = settings.min_visible_points
-        self.visibility_threshold = settings.visibility_threshold
+        self.detector = FaceDetection(
+            model_selection=settings.face_model_selection,
+            min_detection_confidence=settings.face_min_detection_confidence,
+        )
 
-    def process(self, frame):
+    def process(self, frame: cv2.typing.MatLike) -> NamedTuple:
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        return self.pose.process(rgb)
+        return self.detector.process(rgb)
 
-    def is_human_detected(self, results):
-        if not results.pose_landmarks:
-            return False
-
-        visible_points = [
-            lmk
-            for lmk in results.pose_landmarks.landmark
-            if lmk.visibility > self.visibility_threshold
-        ]
-        return len(visible_points) > self.min_visible_points
+    def is_human_detected(self, results) -> bool:
+        return bool(results.detections)
 
 
 class FrameProcessor:
-
     def __init__(self, settings: Settings):
         self.settings: Settings = settings
 
-    def get_roi(self, frame: cv2.Mat) -> cv2.Mat | None:
+    def get_roi(self, frame: cv2.typing.MatLike) -> cv2.typing.MatLike | None:
         height, width = frame.shape[:2]
 
         if (
@@ -54,7 +47,7 @@ class FrameProcessor:
             self.settings.x : self.settings.x + self.settings.width,
         ]
 
-    def draw_roi(self, frame):
+    def draw_roi(self, frame: cv2.typing.MatLike):
         pt1 = (self.settings.x, self.settings.y)
         pt2 = (
             self.settings.x + self.settings.width,
@@ -64,13 +57,15 @@ class FrameProcessor:
 
 
 class DetectionEventPublisher:
-    def __init__(self, event_queue, loop):
+    def __init__(
+        self, event_queue: asyncio.Queue[Any], loop: asyncio.AbstractEventLoop
+    ) -> None:
         self.event_queue = event_queue
         self.loop = loop
 
     def publish(self, image_path: str):
         if self.event_queue and self.loop:
-            event_data = {
+            event_data: dict[str, str | int] = {
                 "image_path": image_path,
                 "timestamp": int(time.time()),
             }
@@ -78,21 +73,32 @@ class DetectionEventPublisher:
 
 
 class DetectionSaver:
-    def __init__(self, settings, event_queue=None, loop=None):
+
+    def __init__(
+        self,
+        settings: Settings,
+        event_queue: asyncio.Queue[Any] | None = None,
+        loop: asyncio.AbstractEventLoop | None = None,
+    ) -> None:
         self.settings = settings
         self.event_queue = event_queue
         self.loop = loop
         os.makedirs(settings.save_path, exist_ok=True)
 
-    def save_human_image(self, frame):
+    def save_human_image(self, frame: cv2.typing.MatLike) -> str | None:
         roi = frame[
             self.settings.y : self.settings.y + self.settings.height,
             self.settings.x : self.settings.x + self.settings.width,
         ]
-        if roi is None:
+        if roi.size == 0:
             return None
         path = f"{self.settings.save_path}/human_{int(time.time())}.jpg"
-        cv2.imwrite(path, roi)
+        success = cv2.imwrite(path, roi)
+
+        if not success:
+            logger.error("Ошибка при сохранении изображения в: %s", path)
+            return None
+
         logger.info("Человек обнаружен. Фото сохранено: %s", path)
         return path
 
@@ -107,8 +113,8 @@ class DetectionSaver:
 
 
 class HumanDetector:
-    def __init__(self, settings, show_camera: bool = False):
-        self.pose_detector = PoseDetector()
+    def __init__(self, settings: Settings, show_camera: bool = False):
+        self.face_detector = FaceDetector()
         self.frame_processor = FrameProcessor(settings)
         self.detection_saver = DetectionSaver(settings)
 
@@ -122,7 +128,7 @@ class HumanDetector:
         self.loop = None
         self.show_camera = show_camera
 
-    def _run(self):
+    def _run(self) -> None:
         self.cap = cv2.VideoCapture(0)
         if not self.cap.isOpened():
             raise RuntimeError("Не удалось подключиться к камере")
@@ -137,16 +143,18 @@ class HumanDetector:
                 logger.error("Ошибка, ROI выходит за границы")
                 break
 
-            results = self.pose_detector.process(roi)
+            results = self.face_detector.process(roi)
 
-            if self.pose_detector.is_human_detected(results):
+            if self.face_detector.is_human_detected(results):
                 current_time = time.time()
 
                 if self.detection_start_time is None:
                     self.detection_start_time = current_time
                 elif current_time - self.detection_start_time >= 5:
                     if current_time - self.last_save_time >= 5:
-                        image_path = self.detection_saver.save_human_image(frame)
+                        image_path: str | None = self.detection_saver.save_human_image(
+                            frame
+                        )
 
                         if image_path:
                             asyncio.run_coroutine_threadsafe(
@@ -155,7 +163,7 @@ class HumanDetector:
                             )
 
                         if self.event_queue and self.loop:
-                            event_data = {
+                            event_data: dict[str, str | int] = {
                                 "image_path": image_path,
                                 "timestamp": int(time.time()),
                             }
@@ -177,9 +185,11 @@ class HumanDetector:
 
         if self.cap.isOpened():
             self.cap.release()
+            self.cap = None
 
         if self.show_camera:
             cv2.destroyAllWindows()
+            cv2.waitKey(100)
 
         self.running = False
 

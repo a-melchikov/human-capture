@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from app.services.detector import detector
 from app.exceptions import CameraAlreadyRunningException, CameraAlreadyStoppedException
+from app.services.detector import detector
 
 router = APIRouter(tags=["Управление камерой"])
 

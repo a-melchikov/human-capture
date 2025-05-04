@@ -8,11 +8,14 @@ class Settings(BaseModel):
     y: int = Field(100, ge=0, description="Y-координата верхнего левого угла")
     width: int = Field(400, gt=0, description="Ширина области")
     height: int = Field(300, gt=0, description="Высота области")
-    min_visible_points: int = Field(
-        20, ge=1, le=33, description="Минимальное кол-во видимых точек"
+    face_model_selection: int = Field(
+        0, ge=0, le=1, description="Модель: 0 — ближняя, 1 — дальняя"
     )
-    visibility_threshold: float = Field(
-        0.5, gt=0, le=1, description="Порог видимости точек"
+    face_min_detection_confidence: float = Field(
+        0.5,
+        ge=0.0,
+        le=1.0,
+        description="Минимальное значение confidence для фиксации лица",
     )
     save_path: str = Field("saved_photos", description="Путь для сохранения фото")
     show_camera: bool = Field(
@@ -26,9 +29,9 @@ def load_config(config_path: str = "settings.json") -> Settings:
             raw_config = json.load(f)
             return Settings.model_validate(raw_config)
     except FileNotFoundError:
-        default_config = Settings()
+        default_config = Settings()  # type: ignore
         with open(config_path, "w") as f:
-            json.dump(default_config.camera.dict(), f, indent=4)
+            json.dump(default_config.model_dump(), f, indent=4)
         return default_config
 
 
